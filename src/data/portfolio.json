@@ -1,0 +1,30 @@
+[
+    {
+        "Techstack": "React, Node.js, MongoDB, Express, Full-Stack Development",
+        "Links": "https://github.com/balmukund/react-portfolio"
+    },
+    {
+        "Techstack": "Python, FastAPI, PostgreSQL, Docker, API Development", 
+        "Links": "https://github.com/balmukund/python-api"
+    },
+    {
+        "Techstack": "Flutter, Kotlin, Firebase, Mobile Development",
+        "Links": "https://github.com/balmukund/mobile-app"
+    },
+    {
+        "Techstack": "JavaScript, TypeScript, Next.js, Web Development",
+        "Links": "https://github.com/balmukund/nextjs-project"
+    },
+    {
+        "Techstack": "Vue.js, Node.js, MySQL, Database Management",
+        "Links": "https://github.com/balmukund/vue-fullstack"
+    },
+    {
+        "Techstack": "Excel, VBA, Data Analysis, MIS Reporting, Problem Solving",
+        "Links": "https://github.com/balmukund/excel-automation"
+    },
+    {
+        "Techstack": "Communication, Project Management, Team Collaboration",
+        "Links": "https://github.com/balmukund/project-management-tools"
+    }
+]

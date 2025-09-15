@@ -1,0 +1,23 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+.env.local
+.env.production
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+*.log
+logs/
+
+# Database (local dev files only)
+*.sqlite
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
