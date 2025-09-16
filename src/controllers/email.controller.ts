@@ -2,9 +2,23 @@ import { Request, Response } from "express";
 import aiServices from "../services/ai.services";
 import portfolioService from "../services/portfolio.services";
 
+
+
+// Extend Request to include user with email property
+declare module 'express-serve-static-core' {
+    interface Request {
+        user?: {
+            email: string;
+        };
+    }
+}
+
 export const generateEmail = async (req: Request, res: Response) => {
     try {
         const { joburl } = req.body;
+        const userEmail: string | undefined = req.user?.email; // Extracted from authMiddleware
+        console.log("Request user:", req.user); // Debug log
+        console.log("User email from request:", userEmail); // Debug log
         
         if (!joburl) {
             return res.status(400).json({
@@ -76,7 +90,13 @@ export const generateEmail = async (req: Request, res: Response) => {
         ];
         
         // Generate the email (writeEmail expects a string of links)
-        const email = await aiServices.writeEmail(jobData, linksToUse.join(', '));
+        if (!userEmail) {
+            return res.status(401).json({
+                message: "User authentication required"
+            });
+        }
+        
+        const email = await aiServices.writeEmail(jobData, linksToUse.join(', '), userEmail);
 
         res.json({
             success: true,
@@ -98,6 +118,8 @@ export const generateEmail = async (req: Request, res: Response) => {
 export const generateEmailFromData = async (req: Request, res: Response) => {
     try {
         const { jobData } = req.body;
+
+        const userEmail = req.user?.email; // Extracted from authMiddleware
         
         if (!jobData) {
             return res.status(400).json({
@@ -121,7 +143,13 @@ export const generateEmailFromData = async (req: Request, res: Response) => {
         ];
         
         // Generate the email
-        const email = await aiServices.writeEmail(jobData, linksToUse.join(', '));
+        if (!userEmail) {
+            return res.status(401).json({
+                message: "User authentication required"
+            });
+        }
+        
+        const email = await aiServices.writeEmail(jobData, linksToUse.join(', '), userEmail);
 
         res.json({
             success: true,

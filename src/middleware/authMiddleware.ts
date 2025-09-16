@@ -1,30 +1,61 @@
 import jwt from "jsonwebtoken";
 import e, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
+import { PrismaClient } from '@prisma/client';
 
 dotenv.config();
 
+const prisma = new PrismaClient();
 
 declare global{
     namespace Express {
         interface Request{
-            user?: string
+            user?: {
+                id: string;
+                email: string;
+                username: string;
+            }
         }
     }
 }
 
-const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-    const token = req.cookies.token || req.header('Authorization')?.replace('Bearer ', '');
+const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const token = req.cookies.token || req.header('Authorization')?.replace('Bearer ', '');
 
-    const response = jwt.verify(token, process.env.JWT_SECRET as string);
+        if (!token) {
+            return res.status(401).json({
+                message: "Access token is required"
+            });
+        }
 
-    if(response){
-        req.user = (response as any).id;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+
+        if (!decoded || !decoded.id) {
+            return res.status(403).json({
+                message: "Invalid token"
+            });
+        }
+
+        // Fetch user details from database
+        const user = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: { id: true, email: true, username: true }
+        });
+
+        if (!user) {
+            return res.status(403).json({
+                message: "User not found"
+            });
+        }
+
+        req.user = user;
         next();
-    } else{
+    } catch (error) {
+        console.error("Auth middleware error:", error);
         res.status(403).json({
             message: "Unauthorized"
-        })
+        });
     }
 }
 

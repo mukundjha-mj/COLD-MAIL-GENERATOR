@@ -2,7 +2,9 @@ import { ChatGroq } from "@langchain/groq";
 import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
 import { JsonOutputParser } from "@langchain/core/output_parsers";
 import { PromptTemplate } from "@langchain/core/prompts";
+import { PrismaClient } from '@prisma/client';
 
+const prisma = new PrismaClient();
 
 class AIService {
     private llm: ChatGroq;
@@ -13,10 +15,20 @@ class AIService {
             apiKey: process.env.GROQ_API_KEY
         })
     }
+    async username(email: string) {
+        const Name = await prisma.user.findFirst({
+            where: { email },
+            select: { username: true }
+        })
+        
+        return (Name?.username || 'User')
+    }
+
+
     async extractJobInfo(cleanedText: string) {
         try {
             console.log("Extracting job info from text length:", cleanedText.length);
-            
+
             const promptExtract = PromptTemplate.fromTemplate(`
                 ### SCRAPED TEXT FROM WEBSITE:
                 {page_data}
@@ -28,24 +40,24 @@ class AIService {
                 Only return the valid JSON.
                 ### VALID JSON (NO PREAMBLE):
             `);
-            
+
             const chainExtract = promptExtract.pipe(this.llm);
             const res = await chainExtract.invoke({ page_data: cleanedText });
-            
+
             console.log("AI Response:", res.content);
 
             try {
                 const jsonParser = new JsonOutputParser();
                 const parsedRes = await jsonParser.parse(res.content as string);
-                
+
                 // Ensure we return a single job object, not an array
                 const jobData = Array.isArray(parsedRes) ? parsedRes[0] : parsedRes;
-                
+
                 // Validate the job data has required fields
                 if (!jobData || typeof jobData !== 'object') {
                     throw new Error("Invalid job data structure");
                 }
-                
+
                 // Ensure skills is an array
                 if (!jobData.skills) {
                     jobData.skills = [];
@@ -55,10 +67,10 @@ class AIService {
                 } else if (!Array.isArray(jobData.skills)) {
                     jobData.skills = [];
                 }
-                
+
                 console.log("Parsed job data:", jobData);
                 return jobData;
-                
+
             } catch (parseError) {
                 console.error("Parse error:", parseError);
                 throw new Error("Context too big. Unable to parse jobs.");
@@ -69,8 +81,13 @@ class AIService {
         }
     }
 
-    async writeEmail(job: any, links: string) {
+    async writeEmail(job: any, links: string, userEmail: string) {
         try {
+            const name = await this.username(userEmail);
+
+            console.log("User Email:", userEmail);
+            console.log("Retrieved Name:", name);
+
             const promptEmail = PromptTemplate.fromTemplate(`
                 ### JOB DESCRIPTION:
                 Role: {role}
@@ -79,7 +96,7 @@ class AIService {
                 Description: {description}
                 
                 ### INSTRUCTION:
-                You are Balmukund Jha, currently in the final year of MCA at VIT with diverse skills and experience.
+                You are {name}, currently in the final year of MCA at VIT with diverse skills and experience.
                 Your primary expertise is in full-stack development (JavaScript, TypeScript, React, Next.js, Node.js, MongoDB, PostgreSQL), 
                 but you are also adaptable and have transferable skills that can apply to various roles.
                 
@@ -95,17 +112,25 @@ class AIService {
                 Do not provide a preamble.
                 ### EMAIL (NO PREAMBLE):
             `);
-            
+
             const chainEmail = promptEmail.pipe(this.llm);
             const res = await chainEmail.invoke({
                 role: job.role || "Not specified",
-                experience: job.experience || "Not specified", 
+                experience: job.experience || "Not specified",
                 skills: Array.isArray(job.skills) ? job.skills.join(", ") : "Not specified",
                 description: job.description || "Not specified",
+                name: name,
                 link_list: links
-            })
+            });
+
+            console.log("Prompt variables:", { // Debug log
+                role: job.role,
+                name: name,
+                link_list: links
+            });
+
             return res.content as string;
-        } catch(error) {
+        } catch (error) {
             console.error("Error writing email: ", error);
             throw error;
         }
@@ -114,26 +139,26 @@ class AIService {
     async loadWebPage(url: string): Promise<string> {
         try {
             console.log("Attempting to load webpage:", url);
-            
+
             const loader = new CheerioWebBaseLoader(url, {
                 // Add some configuration to avoid being blocked
                 timeout: 30000, // 30 second timeout
                 // You can add more options here if needed
             });
-            
+
             const docs = await loader.load();
-            
+
             if (!docs || docs.length === 0) {
                 throw new Error("No content loaded from the webpage");
             }
-            
+
             const content = docs[0].pageContent;
             console.log("Successfully loaded webpage, content preview:", content.substring(0, 200) + "...");
-            
+
             if (content.length < 100) {
                 console.warn("Warning: Very short content loaded, might indicate an error page");
             }
-            
+
             return content;
         } catch (error) {
             console.error("Error loading webpage:", error);
